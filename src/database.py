@@ -5,7 +5,8 @@ from mysql.connector.errors import IntegrityError
 
 ALL_USERS_ID = 0
 
-connection = mysql.connector.connect(
+def get_connection():
+    return mysql.connector.connect(
     host=os.getenv("DB_HOST"),
     user=os.getenv("DB_USER"),
     password=os.getenv("DB_PASSWORD"),
@@ -16,23 +17,36 @@ connection = mysql.connector.connect(
 
 
 def create(original_url, shorten_url, user=ALL_USERS_ID,):
-    date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cursor = connection.cursor()
-    query='INSERT INTO links (original_url, shorten_url, user, date) VALUES (%s, %s, %s, %s);'
-    try:
-        cursor.execute(query, (original_url, shorten_url, user, date,))
-    except IntegrityError:
+
+    already_exists = find_original_url(shorten_url)
+
+    if already_exists:
         return False
-    else:
+
+    date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+        query='INSERT INTO links (original_url, shorten_url, user, date) VALUES (%s, %s, %s, %s);'
+        cursor.execute(query, (original_url, shorten_url, user, date,))
         connection.commit()
         return True
+    except IntegrityError:
+        return False
+    finally:
+        connection.close()
 
 def find_original_url(shorten_url):
-    cursor = connection.cursor()
-    query = 'SELECT * FROM links WHERE shorten_url=%s;'
-    cursor.execute(query, (shorten_url,))
-    result = cursor.fetchone()
-    if not result:
-        return None
-    data = {"original_url": result[0]}
-    return data
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+        query = 'SELECT * FROM links WHERE shorten_url=%s;'
+        cursor.execute(query, (shorten_url,))
+        result = cursor.fetchone()
+        if not result:
+            return None
+        data = {"original_url": result[0]}
+        return data
+    finally:
+        connection.close()

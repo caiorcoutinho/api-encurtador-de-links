@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def v1():
     return JSONResponse(content={"message": "API working", "status_code": 200}, status_code=200)
 
@@ -26,16 +26,16 @@ class Urls(BaseModel):
     original_url: str
     shorten_url: str
 
-@app.post("/shorten", )
+@app.post("/shorten", include_in_schema=False)
 def short_url(urls: Urls):
     shorten_url = db.create(original_url=urls.original_url, shorten_url=urls.shorten_url)
     if not shorten_url:
         raise HTTPException(status_code=409)
     return JSONResponse(content={"message": "Shortened url created", "status_code": 200}, status_code=200)
 
-@app.get("/{shorten_url}")
+@app.get("/{shorten_url}", include_in_schema=False)
 def get_original_url(shorten_url: str):
     data = db.find_original_url(shorten_url)
     if not data:
         raise HTTPException(status_code=404)
-    return RedirectResponse(data['original_url'])
+    return RedirectResponse(data['original_url'], status_code=308)
