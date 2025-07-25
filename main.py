@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import src.database as db
@@ -7,7 +7,7 @@ import src.database as db
 app = FastAPI()
 
 origins = [
-    "http://localhost:3000",
+    "*",
 ]
 
 app.add_middleware(
@@ -33,9 +33,9 @@ def short_url(urls: Urls):
         raise HTTPException(status_code=409)
     return JSONResponse(content={"message": "Shortened url created", "status_code": 200}, status_code=200)
 
-@app.get("/shorten/{shorten_url}")
+@app.get("/{shorten_url}")
 def get_original_url(shorten_url: str):
     original_url = db.find_original_url(shorten_url)
     if not original_url:
         raise HTTPException(status_code=404)
-    return JSONResponse(content={"original_url": original_url["original_url"], "status_code": 200}, status_code=200)
+    return RedirectResponse(original_url)
