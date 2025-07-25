@@ -26,7 +26,7 @@ class Urls(BaseModel):
     original_url: str
     shorten_url: str
 
-@app.post("/shorten")
+@app.post("/shorten", )
 def short_url(urls: Urls):
     shorten_url = db.create(original_url=urls.original_url, shorten_url=urls.shorten_url)
     if not shorten_url:
@@ -35,7 +35,7 @@ def short_url(urls: Urls):
 
 @app.get("/{shorten_url}")
 def get_original_url(shorten_url: str):
-    original_url = db.find_original_url(shorten_url)
-    if not original_url:
+    data = db.find_original_url(shorten_url)
+    if not data:
         raise HTTPException(status_code=404)
-    return RedirectResponse(original_url)
+    return RedirectResponse(data['original_url'])
