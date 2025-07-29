@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
+from pydantic.types import StringConstraints
+from typing import Annotated
 import src.database as db
 
 app = FastAPI()
@@ -18,20 +20,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+index = ""
+with open('index.html', "r") as html:
+    index = html.read()
+
 @app.get("/", include_in_schema=False)
 def v1():
-    return JSONResponse(content={"message": "API working", "status_code": 200}, status_code=200)
+    return HTMLResponse(index)
 
 class Urls(BaseModel):
-    original_url: str
-    shorten_url: str
+    original_url: HttpUrl
+    shorten_url: Annotated[
+        str,
+        StringConstraints(
+            max_length=10,
+            pattern=r"^[a-zA-Z0-9_-]+$",
+        )
+    ]
 
 @app.post("/shorten", include_in_schema=False)
 def short_url(urls: Urls):
-    shorten_url = db.create(original_url=urls.original_url, shorten_url=urls.shorten_url)
-    if not shorten_url:
-        raise HTTPException(status_code=409)
-    return JSONResponse(content={"message": "Shortened url created", "status_code": 200}, status_code=200)
+    try:
+        original_url = str(urls.original_url)
+        shorten_url = urls.shorten_url
+        success = db.create(original_url=original_url, shorten_url=shorten_url)
+        if not success:
+            raise HTTPException(status_code=409)
+        return JSONResponse(content={"message": "Shortened url created", "status_code": 200}, status_code=200)
+    except Exception as e:
+        print(str(e), e)
+        raise HTTPException(status_code=500)
 
 @app.get("/{shorten_url}", include_in_schema=False)
 def get_original_url(shorten_url: str):
